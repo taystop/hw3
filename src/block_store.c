@@ -8,41 +8,66 @@
 // remove it before you submit. Just allows things to compile initially.
 #define UNUSED(x) (void)(x)
 
-block_store_t *block_store_create()
+block_store_t* block_store_create()
 {
-    return NULL;
+    struct block_store_t
+    {
+        block_store_t store_arr[BLOCK_STORE_NUM_BLOCKS];
+        for (int i = 0; i < BLOCK_STORE_NUM_BLOCKS; i++)
+        {
+            store_arr[i] = malloc(sizeof(BLOCK_SIZE_BYTES));
+        }
+
+    } store
+        return store;
+
 }
 
-void block_store_destroy(block_store_t *const bs)
+void block_store_destroy(block_store_t* const bs)
+{
+    if (bs != NULL)
+    {
+        free(bs);
+    }
+
+}
+size_t block_store_allocate(block_store_t* const bs)
+{
+    if (bs == NULL)
+    {
+        return 0;
+    }
+    return 0;
+
+
+}
+
+bool block_store_request(block_store_t* const bs, const size_t block_id)
+{
+    if (bs == NULL)
+    {
+        return false;
+    }if (block_id)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+void block_store_release(block_store_t* const bs, const size_t block_id)
 {
     UNUSED(bs);
+    UNUSED(block_id);
 }
-size_t block_store_allocate(block_store_t *const bs)
+
+size_t block_store_get_used_blocks(const block_store_t* const bs)
 {
     UNUSED(bs);
     return 0;
 }
 
-bool block_store_request(block_store_t *const bs, const size_t block_id)
-{
-    UNUSED(bs);
-    UNUSED(block_id);
-    return false;
-}
-
-void block_store_release(block_store_t *const bs, const size_t block_id)
-{
-    UNUSED(bs);
-    UNUSED(block_id);
-}
-
-size_t block_store_get_used_blocks(const block_store_t *const bs)
-{
-    UNUSED(bs);
-    return 0;
-}
-
-size_t block_store_get_free_blocks(const block_store_t *const bs)
+size_t block_store_get_free_blocks(const block_store_t* const bs)
 {
     UNUSED(bs);
     return 0;
@@ -53,31 +78,59 @@ size_t block_store_get_total_blocks()
     return 0;
 }
 
-size_t block_store_read(const block_store_t *const bs, const size_t block_id, void *buffer)
+size_t block_store_read(const block_store_t* const bs, const size_t block_id, void* buffer)
 {
-    UNUSED(bs);
-    UNUSED(block_id);
-    UNUSED(buffer);
+    if (bs == NULL)
+    {
+        return 0;
+    }
+    if (block_id)
+    {
+        return 0;
+    }
+    if (buffer == NULL)
+    {
+        return 0;
+    }
     return 0;
 }
 
-size_t block_store_write(block_store_t *const bs, const size_t block_id, const void *buffer)
+size_t block_store_write(block_store_t* const bs, const size_t block_id, const void* buffer)
 {
-    UNUSED(bs);
-    UNUSED(block_id);
-    UNUSED(buffer);
+    if (bs == NULL)
+    {
+        return 0;
+    }
+    if (block_id)
+    {
+        return 0;
+    }
+    if (buffer == NULL)
+    {
+        return 0;
+    }
     return 0;
 }
 
-block_store_t *block_store_deserialize(const char *const filename)
+block_store_t* block_store_deserialize(const char* const filename)
 {
-    UNUSED(filename);
+    if (filename == NULL)
+    {
+        return NULL;
+    }
+
     return NULL;
 }
 
-size_t block_store_serialize(const block_store_t *const bs, const char *const filename)
+size_t block_store_serialize(const block_store_t* const bs, const char* const filename)
 {
-    UNUSED(bs);
-    UNUSED(filename);
+    if (bs == NULL)
+    {
+        return 0;
+    }
+    if (filename)
+    {
+        return 0;
+    }
     return 0;
 }
