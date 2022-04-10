@@ -8,18 +8,15 @@
 // remove it before you submit. Just allows things to compile initially.
 #define UNUSED(x) (void)(x)
 
+struct block_store {
+    uint8_t store_arr[BLOCK_STORE_NUM_BLOCKS];
+};
+
 block_store_t* block_store_create()
 {
-    struct block_store_t
-    {
-        block_store_t store_arr[BLOCK_STORE_NUM_BLOCKS];
-        for (int i = 0; i < BLOCK_STORE_NUM_BLOCKS; i++)
-        {
-            store_arr[i] = malloc(sizeof(BLOCK_SIZE_BYTES));
-        }
 
-    } store
-        return store;
+    block_store_t* store = (block_store_t*)malloc(sizeof(block_store_t));
+    return store;
 
 }
 
