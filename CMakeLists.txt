@@ -8,7 +8,7 @@ include_directories("${PROJECT_SOURCE_DIR}/include")
 
 # build a dynamic library called libblock_store.so
 # note that the prefix lib will be automatically added in the filename.
-
+add_library(block_store SHARED src/block_store.c include/block_store.h src/bitmap.c include/bitmap.h)
 
 # make an executable
 add_executable(${PROJECT_NAME}_test test/tests.cpp)

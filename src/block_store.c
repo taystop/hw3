@@ -9,9 +9,12 @@
 
 
 
-//the block_store struct, contains the bitmap fbm to keep track of available and used blocks
-//can store 2^8 blocks of 2^8 bytes, the first block being the fbm
-//fbm is physically stored in the first block of the blocks array, with a pointer to keep track of it in the struct
+//the block_store struct, contains a map of available blocks and a bitmap that keeps track of free blocks
+// Declaring the struct but not implementing in the header allows us to prevent users
+// from using the object directly and monkeying with the contents
+// They can only create pointers to the struct, which must be given out by us
+// This enforces a black box device, but it can be restricting
+//
 struct block_store {
     void* blockMap;
     bitmap_t* freeMap;
@@ -23,7 +26,7 @@ struct block_store {
 /// \return Pointer to a new block storage device, NULL on error
 ///
 block_store_t* block_store_create() {
-    //malloc struct
+    //Free space for the block store struct
     block_store_t* bs = malloc(sizeof(block_store_t));
 
     //check for allocation errors
@@ -31,7 +34,7 @@ block_store_t* block_store_create() {
         return NULL;
     }
 
-    //allocate and zero out the block store (calloc'ed in order to init bitmap as all zeros)
+    //Initialize the blocks in the store (calloc initializes the bitmap as all zeros)
     bs->blockMap = calloc(BLOCK_STORE_NUM_BLOCKS, BLOCK_SIZE_BYTES);
 
     //check for allocation errors
@@ -40,9 +43,10 @@ block_store_t* block_store_create() {
         return NULL;
     }
 
-    //use the first block as the fbm and init it
+    //Initialize the bitmap
     bs->freeMap = bitmap_overlay(BLOCK_STORE_AVAIL_BLOCKS, bs->blockMap);
 
+    //return resulting block store
     return bs;
 }
 
@@ -57,17 +61,17 @@ void block_store_destroy(block_store_t* const bs) {
         return;
     }
     else {
-        //free inner objects then the whole struct
-
+	//Free the entire store from the inside out
+        //Free the inside blockmap
         if (bs->blockMap != NULL) {
             free(bs->blockMap);
 
         }
-
+	//Free the inside bitmap
         if (bs->freeMap != NULL) {
             free(bs->freeMap);
         }
-
+	//Free the rest of the struct
         free(bs);
     }
 }
@@ -79,17 +83,23 @@ void block_store_destroy(block_store_t* const bs) {
 ///
 size_t block_store_allocate(block_store_t* const bs)
 {
+    //Check for valid blockstore
     if (bs != NULL)
     {
+	//Retrieve the first free block from the bitmap
         size_t freeBlock = bitmap_ffz(bs->freeMap);
+	//Check for valid block
         if (freeBlock == SIZE_MAX) {
             return freeBlock;
         }
+	//Otherwise set that block as being in use
         bitmap_set(bs->freeMap, freeBlock);
+	//return id of block used.
         return freeBlock;
     }
     return SIZE_MAX;
 }
+
 ///
 /// Attempts to allocate the requested block id
 /// \param bs the block store object
@@ -97,20 +107,21 @@ size_t block_store_allocate(block_store_t* const bs)
 /// \return boolean indicating succes of operation
 ///
 bool block_store_request(block_store_t* const bs, const size_t block_id) {
-    //make sure that bs and block_id are valid
+    //Check for valid blockstore and id
     if (bs == NULL || block_id > block_store_get_total_blocks()) {
         return false;
     }
 
-    //check to see if the requested block_id is set in the fbm
+    //Check if the block has been set in the bitmap
     bool isSet = false;
     isSet = bitmap_test(bs->freeMap, block_id);
 
-    //if it is not set, then mark set and return that it can be used, else false - it is already in use
+    //If the block is not set, set it and return success
     if (!isSet) {
         bitmap_set(bs->freeMap, block_id);
         return true;
     }
+    //Otherwise it's already set so return failure
     else {
         return false;
     }
@@ -122,11 +133,11 @@ bool block_store_request(block_store_t* const bs, const size_t block_id) {
 /// \param block_id The block to free
 ///
 void block_store_release(block_store_t* const bs, const size_t block_id) {
-    //check that bs and block_id are valid
+    //Check for valid blockstore and id
     if (bs == NULL || block_id > block_store_get_total_blocks()) {
         return;
     }
-    //release (zero out) the given block_id in the fbm
+    //Reset the given block id in the bitmap
     bitmap_reset(bs->freeMap, block_id);
 }
 
@@ -136,12 +147,12 @@ void block_store_release(block_store_t* const bs, const size_t block_id) {
 /// \return Total blocks in use, SIZE_MAX on error
 ///
 size_t block_store_get_used_blocks(const block_store_t* const bs) {
-    //make sure that bs is valid
+    //Check for valid blockstore
     if (bs == NULL) {
         return SIZE_MAX;
     }
 
-    //get and return amount of total blocks that are in use (set bits)
+    //Find total number of set bits in the bitmap and return them
     size_t totalSet = bitmap_total_set(bs->freeMap);
 
     return totalSet;
@@ -153,14 +164,15 @@ size_t block_store_get_used_blocks(const block_store_t* const bs) {
 /// \return Total blocks free, SIZE_MAX on error
 ///
 size_t block_store_get_free_blocks(const block_store_t* const bs) {
-    //check to make sure bs is valid
+    //Check for valid blockstore
     if (bs == NULL) {
         return SIZE_MAX;
     }
 
-    //total bits in fbm - total set in fbm = total free in fbm
+    //Find the total number free by subtracting those in use from the total bits
     size_t totalFree = bitmap_get_bits(bs->freeMap) - bitmap_total_set(bs->freeMap);
 
+    //Return answer
     return totalFree;
 }
 
@@ -181,19 +193,20 @@ size_t block_store_get_total_blocks() {
 /// \return Number of bytes read, 0 on error
 ///
 size_t block_store_read(const block_store_t* const bs, const size_t block_id, void* buffer) {
-    //check to make sure bs, buffer, and block_id are valid
+    //Check that all parameters are valid
     if (bs == NULL || buffer == NULL || block_id > block_store_get_total_blocks()) {
         return 0;
     }
 
-    //make sure this block is actually in use
+    //Check to see if the block is in use
     if (bitmap_test(bs->freeMap, block_id) == 0) {
         return 0;
     }
     else {
-        //copy contents from specified block into buffer
+        //copy block contents into the given buffer
         memcpy(buffer, (bs->blockMap + (block_id * BLOCK_SIZE_BYTES)), BLOCK_SIZE_BYTES);
-        return BLOCK_SIZE_BYTES;
+        //Return the number of bytes read
+	return BLOCK_SIZE_BYTES;
     }
 }
 
@@ -205,19 +218,20 @@ size_t block_store_read(const block_store_t* const bs, const size_t block_id, vo
 /// \return Number of bytes written, 0 on error
 ///
 size_t block_store_write(block_store_t* const bs, const size_t block_id, const void* buffer) {
-    //validate bs, buffer, block_id
+    //Check that all parameters are valid
     if (bs == NULL || buffer == NULL || block_id > block_store_get_total_blocks()) {
         return 0;
     }
 
-    //make sure that the block has been requested first and can be written to
+    //Check to see if the block is in use
     if (bitmap_test(bs->freeMap, block_id) == 0) {
         return 0;
     }
     else {
-        //copy contents from buffer into the proper id in the block array
+        //Copy the contents of the buffer into the given block
         memcpy((bs->blockMap + (block_id * BLOCK_SIZE_BYTES)), buffer, BLOCK_SIZE_BYTES);
-        return BLOCK_SIZE_BYTES;
+        //Return the number of bytes that were written
+	return BLOCK_SIZE_BYTES;
     }
 }
 
@@ -227,31 +241,35 @@ size_t block_store_write(block_store_t* const bs, const size_t block_id, const v
 /// \return Pointer to new BS device, NULL on error
 ///
 block_store_t* block_store_deserialize(const char* const filename) {
-    //make sure filename is valid
+    //Check that filename is valid
     if (filename == NULL) {
         return NULL;
     }
 
-    //open file
+    //Attempt to open the file
     int fd = open(filename, O_RDONLY);
 
-    //make sure file opening was a success
+    //Check that file was opened successfully
     if (fd < 0) {
         return NULL;
     }
 
-    //create the bs into which the deserialized data will go
+    //Create a new blockstore to store the files contents
     block_store_t* bs = block_store_create();
 
-    //read from the file and put the data into blocks array
+    //Read data from the file and store it into the blockstore's blockmap
     size_t bytes = read(fd, bs->blockMap, BLOCK_STORE_NUM_BYTES);
 
-    //make sure any data was read
+    //Check that the operation completed
     if (bytes == 0) {
         block_store_destroy(bs);
         return NULL;
     }
 
+    //Close the open file descriptor
+    close(fd);
+
+    //Return the resulting blockstore
     return bs;
 }
 
@@ -262,33 +280,38 @@ block_store_t* block_store_deserialize(const char* const filename) {
 /// \return Number of bytes written, 0 on error
 ///
 size_t block_store_serialize(const block_store_t* const bs, const char* const filename) {
-    //make sure bs and filename are valid
+    //Check that blockstore and filename are valid
     if (bs == NULL || filename == NULL) {
         return 0;
     }
 
-    //open file in create mode to start in case it has not been created yet
+    //Try to open the file in create mode to see if it already exists
     //source: https://stackoverflow.com/questions/15798450/open-with-o-creat-was-it-opened-or-created
     int fd = open(filename, O_WRONLY | O_CREAT | O_EXCL, 0644);
 
-    //if error or file already exists, now open in write mode
+    //If the file exists try opening in write mode
     if ((fd == -1) && (errno == EEXIST))
     {
+	//Open the file with write flag
         fd = open(filename, O_WRONLY);
     }
 
-    //if all file opening fails, return error
+    //Check that at least one opening function worked
     if (fd < 0) {
         return 0;
     }
 
-    //write blockstore into file and return the number of successful bytes written
+    //Write the contents of the blockmap into the open file
     size_t bytes = write(fd, bs->blockMap, BLOCK_STORE_NUM_BYTES);
+    
+    //Close the open file descriptor
+    close(fd);
 
-    //make things actually written into file
+    //Check if nothing was written
     if (bytes == 0) {
         return 0;
     }
 
+    //Return the number of bytes written
     return bytes;
 }
