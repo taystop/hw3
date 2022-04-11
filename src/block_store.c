@@ -1,11 +1,9 @@
-#include <stdio.h>
-#include <stdint.h>
+//Authors: Thomas Reece, Madison Burch, Tayler Stoppel
+//block_store.c is an application used for the assessment and analysis of mapping virtual memory through using a bitmap
 #include <string.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include "bitmap.h"
 #include "block_store.h"
-#include <errno.h>
+
 
 
 #define UNUSED(x) (void)(x)
@@ -208,6 +206,7 @@ size_t block_store_get_total_blocks() {
 ///
 size_t block_store_read(const block_store_t* const bs, const size_t block_id, void* buffer) {
 
+    //int paramCheck = 0; not used anymore...
     //Check that all parameters are valid and if the block is currently being used
     if (bs != NULL) {
         if (buffer != NULL) {
