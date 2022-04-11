@@ -116,24 +116,22 @@ size_t block_store_allocate(block_store_t* const bs)
 ///
 bool block_store_request(block_store_t* const bs, const size_t block_id) {
     //Check for valid blockstore and id
-    if (block_id > block_store_get_total_blocks())
+    if (block_id < block_store_get_total_blocks())
     {
-        return false;
+        if (bs != NULL)
+        {
+            //Check if the block has been set in the bitmap
+            //If the block is not set, set it and return success
+            if (!bitmap_test(bs->freeMap, block_id))
+            {
+                bitmap_set(bs->freeMap, block_id);
+                return true;
+            }
+        }
     }
-    if (bs == NULL) {
-        return false;
-    }
-    //Check if the block has been set in the bitmap
-    //If the block is not set, set it and return success
-    if (bitmap_test(bs->freeMap, block_id)) {
-        return false;
-    }
-    //Otherwise it's already set so return failure
-    else
-    {
-        bitmap_set(bs->freeMap, block_id);
-        return true;
-    }
+    //if the param check's fail or the block is not ser, we return false
+    return false;
+
 }
 
 ///
@@ -151,6 +149,7 @@ void block_store_release(block_store_t* const bs, const size_t block_id) {
             bitmap_reset(bs->freeMap, block_id);
         }
     }
+    //If param check's fail, the method finishes
 }
 
 ///
